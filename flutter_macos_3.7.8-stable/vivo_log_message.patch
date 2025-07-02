@@ -113,20 +113,74 @@ index ee13511f565..aea628ae61f 100644
    @override
    Status startProgress(
 diff --git a/packages/flutter_tools/lib/src/base/process.dart b/packages/flutter_tools/lib/src/base/process.dart
-index 5a1560efad7..5698772ffa5 100644
+index 5a1560efad7..9d264e40b41 100644
 --- a/packages/flutter_tools/lib/src/base/process.dart
 +++ b/packages/flutter_tools/lib/src/base/process.dart
-@@ -558,6 +558,10 @@ class _DefaultProcessUtils implements ProcessUtils {
+@@ -262,7 +262,7 @@ class _DefaultProcessUtils implements ProcessUtils {
+     if (timeoutRetries < 0) {
+       throw ArgumentError('timeoutRetries must be non-negative');
+     }
+-    _traceCommand(cmd, workingDirectory: workingDirectory);
++    _traceCommand(cmd, workingDirectory: workingDirectory, environment:environment);
  
-   void _traceCommand(List<String> args, { String? workingDirectory }) {
+     // When there is no timeout, there's no need to kill a running process, so
+     // we can just use _processManager.run().
+@@ -372,7 +372,7 @@ class _DefaultProcessUtils implements ProcessUtils {
+     bool allowReentrantFlutter = false,
+     Encoding encoding = systemEncoding,
+   }) {
+-    _traceCommand(cmd, workingDirectory: workingDirectory);
++    _traceCommand(cmd, workingDirectory: workingDirectory, environment: environment);
+     final ProcessResult results = _processManager.runSync(
+       cmd,
+       workingDirectory: workingDirectory,
+@@ -425,7 +425,7 @@ class _DefaultProcessUtils implements ProcessUtils {
+     Map<String, String>? environment,
+     ProcessStartMode mode = ProcessStartMode.normal,
+   }) {
+-    _traceCommand(cmd, workingDirectory: workingDirectory);
++    _traceCommand(cmd, workingDirectory: workingDirectory, environment: environment);
+     return _processManager.start(
+       cmd,
+       workingDirectory: workingDirectory,
+@@ -509,7 +509,7 @@ class _DefaultProcessUtils implements ProcessUtils {
+     List<String> cli, {
+     Map<String, String>? environment,
+   }) {
+-    _traceCommand(cli);
++    _traceCommand(cli, environment: environment);
+     if (!_processManager.canRun(cli.first)) {
+       _logger.printTrace('$cli either does not exist or is not executable.');
+       return false;
+@@ -528,7 +528,7 @@ class _DefaultProcessUtils implements ProcessUtils {
+     List<String> cli, {
+     Map<String, String>? environment,
+   }) async {
+-    _traceCommand(cli);
++    _traceCommand(cli, environment: environment);
+     if (!_processManager.canRun(cli.first)) {
+       _logger.printTrace('$cli either does not exist or is not executable.');
+       return false;
+@@ -556,12 +556,16 @@ class _DefaultProcessUtils implements ProcessUtils {
+     return environment;
+   }
+ 
+-  void _traceCommand(List<String> args, { String? workingDirectory }) {
++  void _traceCommand(List<String> args, { String? workingDirectory, Map<String, String>? environment }) {
      final String argsText = args.join(' ');
 +    final DateTime n = DateTime.now();
 +    String pad(int i) => i.toString().padLeft(2, '0');
 +    final String s = '${n.year}-${pad(n.month)}-${pad(n.day)} ${pad(n.hour)}:${pad(n.minute)}:${pad(n.second)}';
 +    _logger.printStatus('*$s: ${workingDirectory != null ? '[$workingDirectory/] ' : ''}$argsText');
      if (workingDirectory == null) {
-       _logger.printTrace('executing: $argsText');
+-      _logger.printTrace('executing: $argsText');
++      _logger.printTrace('executing: $argsText \n with environment: $environment');
      } else {
+-      _logger.printTrace('executing: [$workingDirectory/] $argsText');
++      _logger.printTrace('executing: [$workingDirectory/] $argsText \n with environment: $environment');
+     }
+   }
+ }
 diff --git a/packages/flutter_tools/lib/src/globals.dart b/packages/flutter_tools/lib/src/globals.dart
 index 260eaf56653..e2c4f2aa200 100644
 --- a/packages/flutter_tools/lib/src/globals.dart
