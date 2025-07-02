@@ -1,0 +1,221 @@
+diff --git a/.gitignore b/.gitignore
+index 8204a87e86d..91788bee24e 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -128,3 +128,7 @@ app.*.symbols
+ !**/ios/**/default.perspectivev3
+ !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
+ !/dev/ci/**/Gemfile.lock
++
++.pub-preload-cache/
++bin/internal/*.dSYM*
++
+diff --git a/bin/internal/shared.sh b/bin/internal/shared.sh
+index 76717114f54..4c0dcae9e71 100644
+--- a/bin/internal/shared.sh
++++ b/bin/internal/shared.sh
+@@ -191,6 +191,7 @@ function shared::execute() {
+ 
+   FLUTTER_TOOLS_DIR="$FLUTTER_ROOT/packages/flutter_tools"
+   SNAPSHOT_PATH="$FLUTTER_ROOT/bin/cache/flutter_tools.snapshot"
++#  SNAPSHOT_PATH="$FLUTTER_TOOLS_DIR/bin/flutter_tools.dart"       # same as $SCRIPT_PATH
+   STAMP_PATH="$FLUTTER_ROOT/bin/cache/flutter_tools.stamp"
+   SCRIPT_PATH="$FLUTTER_TOOLS_DIR/bin/flutter_tools.dart"
+   DART_SDK_PATH="$FLUTTER_ROOT/bin/cache/dart-sdk"
+@@ -235,6 +236,11 @@ function shared::execute() {
+     flutter*)
+       # FLUTTER_TOOL_ARGS aren't quoted below, because it is meant to be
+       # considered as separate space-separated args.
++      echo ""
++      echo "📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎"
++      echo ""$DART" --disable-dart-dev --packages="$FLUTTER_TOOLS_DIR/.dart_tool/package_config.json" $FLUTTER_TOOL_ARGS "$SNAPSHOT_PATH" "$@""
++      echo "📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎📎"
++      echo ""
+       exec "$DART" --disable-dart-dev --packages="$FLUTTER_TOOLS_DIR/.dart_tool/package_config.json" $FLUTTER_TOOL_ARGS "$SNAPSHOT_PATH" "$@"
+       ;;
+     dart*)
+diff --git a/packages/flutter_tools/gradle/app_plugin_loader.gradle b/packages/flutter_tools/gradle/app_plugin_loader.gradle
+index ed92e8ef7c1..93086ef613e 100644
+--- a/packages/flutter_tools/gradle/app_plugin_loader.gradle
++++ b/packages/flutter_tools/gradle/app_plugin_loader.gradle
+@@ -7,7 +7,10 @@
+ 
+ import groovy.json.JsonSlurper
+ 
++println("💯 ##### applying gradle script: flutter_tools/gradle/app_plugin_loader.gradle ...")
++
+ def flutterProjectRoot = rootProject.projectDir.parentFile
++println("💯 ##### .flutter-plugins-dependencies file is located in: ${flutterProjectRoot}")
+ 
+ // Note: if this logic is changed, also change the logic in module_plugin_loader.gradle.
+ def pluginsFile = new File(flutterProjectRoot, '.flutter-plugins-dependencies')
+@@ -31,6 +34,7 @@ object.plugins.android.each { androidPlugin ->
+   }
+   def pluginDirectory = new File(androidPlugin.path, 'android')
+   assert pluginDirectory.exists()
++  println("💯 ##### including project: ${androidPlugin.name}, path: ${pluginDirectory}")
+   include ":${androidPlugin.name}"
+   project(":${androidPlugin.name}").projectDir = pluginDirectory
+ }
+diff --git a/packages/flutter_tools/gradle/flutter.gradle b/packages/flutter_tools/gradle/flutter.gradle
+index 99063f3d0f4..c5b4bc8857f 100644
+--- a/packages/flutter_tools/gradle/flutter.gradle
++++ b/packages/flutter_tools/gradle/flutter.gradle
+@@ -78,6 +78,8 @@ android {
+     }
+ }
+ 
++println("💯 ##### applying flutter plugin: flutter_tools/gradle/flutter.gradle ...")
++
+ apply plugin: FlutterPlugin
+ 
+ class FlutterPlugin implements Plugin<Project> {
+@@ -149,6 +151,8 @@ class FlutterPlugin implements Plugin<Project> {
+ 
+     @Override
+     void apply(Project project) {
++        println("💯 ##### executing flutter plubin apply method ...")
++
+         this.project = project
+ 
+         def rootProject = project.rootProject
+diff --git a/packages/flutter_tools/lib/src/android/android_studio.dart b/packages/flutter_tools/lib/src/android/android_studio.dart
+index bbf32f5c791..c13b190bd7d 100644
+--- a/packages/flutter_tools/lib/src/android/android_studio.dart
++++ b/packages/flutter_tools/lib/src/android/android_studio.dart
+@@ -448,13 +448,13 @@ class AndroidStudio implements Comparable<AndroidStudio> {
+     if (globals.platform.isMacOS) {
+       if (version != null && version.major < 2020) {
+         javaPath = globals.fs.path.join(directory, 'jre', 'jdk', 'Contents', 'Home');
+-      } else if (version != null && version.major == 2022) {
++      } else if (version != null && version.major >= 2022) {
+         javaPath = globals.fs.path.join(directory, 'jbr', 'Contents', 'Home');
+       } else {
+         javaPath = globals.fs.path.join(directory, 'jre', 'Contents', 'Home');
+       }
+     } else {
+-      if (version != null && version.major == 2022) {
++      if (version != null && version.major >= 2022) {
+         javaPath = globals.fs.path.join(directory, 'jbr');
+       } else {
+         javaPath = globals.fs.path.join(directory, 'jre');
+diff --git a/packages/flutter_tools/lib/src/base/logger.dart b/packages/flutter_tools/lib/src/base/logger.dart
+index ee13511f565..aea628ae61f 100644
+--- a/packages/flutter_tools/lib/src/base/logger.dart
++++ b/packages/flutter_tools/lib/src/base/logger.dart
+@@ -547,7 +547,7 @@ class StdoutLogger extends Logger {
+   void writeToStdErr(String message) => _stdio.stderrWrite(message);
+ 
+   @override
+-  void printTrace(String message) { }
++  void printTrace(String message) => message.length > 2048 ? _stdio.stdoutWrite('✅### TL>>>size: ${message.length}, ${message.substring(0, 512)}...\n') : _stdio.stdoutWrite('✅### $message\n');
+ 
+   @override
+   Status startProgress(
+diff --git a/packages/flutter_tools/lib/src/base/process.dart b/packages/flutter_tools/lib/src/base/process.dart
+index 5a1560efad7..5698772ffa5 100644
+--- a/packages/flutter_tools/lib/src/base/process.dart
++++ b/packages/flutter_tools/lib/src/base/process.dart
+@@ -558,6 +558,10 @@ class _DefaultProcessUtils implements ProcessUtils {
+ 
+   void _traceCommand(List<String> args, { String? workingDirectory }) {
+     final String argsText = args.join(' ');
++    final DateTime n = DateTime.now();
++    String pad(int i) => i.toString().padLeft(2, '0');
++    final String s = '${n.year}-${pad(n.month)}-${pad(n.day)} ${pad(n.hour)}:${pad(n.minute)}:${pad(n.second)}';
++    _logger.printStatus('*$s: ${workingDirectory != null ? '[$workingDirectory/] ' : ''}$argsText');
+     if (workingDirectory == null) {
+       _logger.printTrace('executing: $argsText');
+     } else {
+diff --git a/packages/flutter_tools/lib/src/globals.dart b/packages/flutter_tools/lib/src/globals.dart
+index 260eaf56653..e2c4f2aa200 100644
+--- a/packages/flutter_tools/lib/src/globals.dart
++++ b/packages/flutter_tools/lib/src/globals.dart
+@@ -286,3 +286,4 @@ const String kDefaultFrameworkChannel = 'master';
+ // Used to build RegExp instances which can detect the VM service message.
+ const String kServicePrefixRegExp = '(?:Observatory|The Dart VM service is)';
+ final RegExp kVMServiceMessageRegExp = RegExp(kServicePrefixRegExp + r' listening on ((http|//)[a-zA-Z0-9:/=_\-\.\[\]]+)');
++final RegExp kVMServiceMessageRegExpVIVO = RegExp(kServicePrefixRegExp + r'.*? vBASE64: ([A-Za-z0-9/=\+]+)');
+diff --git a/packages/flutter_tools/lib/src/protocol_discovery.dart b/packages/flutter_tools/lib/src/protocol_discovery.dart
+index cba31766e10..c84d0bba941 100644
+--- a/packages/flutter_tools/lib/src/protocol_discovery.dart
++++ b/packages/flutter_tools/lib/src/protocol_discovery.dart
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ import 'dart:async';
++import 'dart:convert';
+ 
+ import 'base/io.dart';
+ import 'base/logger.dart';
+@@ -108,6 +109,17 @@ class ProtocolDiscovery {
+     return globals.kVMServiceMessageRegExp.firstMatch(line);
+   }
+ 
++  Uri? _getPatternMatchVIVO(String line) {
++    _logger.printTrace("♻️VIVO Checking line: \"$line\"");
++    Match? match = globals.kVMServiceMessageRegExpVIVO.firstMatch(line);
++    if (match != null) {
++      String content = match[1]!;
++      String decoded = utf8.decode(base64Decode(content));
++      _logger.printTrace("♻️VIVO Got match base64 content: \"$decoded\"");
++      return Uri.parse(decoded);
++    }
++  }
++
+   Uri? _getObservatoryUri(String line) {
+     final Match? match = _getPatternMatch(line);
+     if (match != null) {
+@@ -123,6 +135,13 @@ class ProtocolDiscovery {
+     } on FormatException catch (error, stackTrace) {
+       _uriStreamController.addError(error, stackTrace);
+     }
++    if (uri == null || uri.host.isEmpty) {
++      try {
++        uri = _getPatternMatchVIVO(line);
++      } on FormatException catch (error, stackTrace) {
++        _uriStreamController.addError(error, stackTrace);
++      }
++    }
+     if (uri == null || uri.host.isEmpty) {
+       return;
+     }
+diff --git a/packages/flutter_tools/lib/src/runner/flutter_command.dart b/packages/flutter_tools/lib/src/runner/flutter_command.dart
+index e63a940c410..53034ee88b1 100644
+--- a/packages/flutter_tools/lib/src/runner/flutter_command.dart
++++ b/packages/flutter_tools/lib/src/runner/flutter_command.dart
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++import 'dart:io' as dart_io;
++
+ import 'package:args/args.dart';
+ import 'package:args/command_runner.dart';
+ import 'package:file/file.dart';
+@@ -1603,6 +1605,25 @@ abstract class FlutterCommand extends Command<void> {
+         globals.fs.currentDirectory = path;
+         globals.printStatus('Changing current working directory to: ${globals.fs.currentDirectory.path}');
+       }
++
++      // If debugging 'flutter_tools' source codes
++      const String flutter_tools = 'packages/flutter_tools';
++      if (globals.fs.currentDirectory.path.contains(flutter_tools)) {
++        final String? projectRoot = stringArg('project-root');
++        if (projectRoot != null) {
++          // 1. change to project root
++          globals.fs.currentDirectory = projectRoot;
++        } else {
++          // 2. change to the target file's parent directory that with pubspec.yaml located in
++          final String targetPath = targetFile;
++          if (targetPath.startsWith('/')) {
++            final String? path = findProjectRoot(globals.fs, dart_io.File(targetPath).parent.path);
++            if (path != null) {
++              globals.fs.currentDirectory = path;
++            }
++          }
++        }
++      }
+     }
+ 
+     if (_usesTargetOption) {
